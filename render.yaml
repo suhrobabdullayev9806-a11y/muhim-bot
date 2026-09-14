@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: muhim-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install pyTelegramBotAPI
+    startCommand: python bot.py
+    healthCheckPath: /
+    envVars:
+      - key: BOT_TOKEN
+        value: PUT_YOUR_BOT_TOKEN_HERE
+        sync: false
