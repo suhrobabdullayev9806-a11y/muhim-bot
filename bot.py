@@ -166,21 +166,43 @@ def is_admin(user_id):
     return admin_id != "" and str(user_id) == str(admin_id)
 
 
+def _norm_channel(raw):
+    ch = (raw or "").strip()
+    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
+        if ch.lower().startswith(prefix):
+            ch = ch[len(prefix):]
+    ch = ch.split("/")[0].split("?")[0].strip()
+    if ch and not ch.startswith("@"):
+        ch = "@" + ch
+    return ch
+
+
 def check_subscription(user_id):
-    channel = get_setting("mandatory_channel", "").strip()
+    channel = _norm_channel(get_setting("mandatory_channel", ""))
     if not channel:
         return True
-    ch = channel.lstrip("@")
     try:
-        member = bot.get_chat_member(ch, user_id)
-        return member.status in ("member", "administrator", "creator")
-    except telebot.apihelper.ApiException:
+        member = bot.get_chat_member(channel, user_id)
+        return member.status in ("member", "administrator", "creator", "restricted")
+    except telebot.apihelper.ApiException as exc:
+        admin_id = get_setting("admin_id", "")
+        try:
+            if admin_id:
+                bot.send_message(
+                    admin_id,
+                    f"{P('warn')} <b>Obuna tekshiruv xatolik</b>\n\n"
+                    f"Kanal: <code>{channel}</code>\n"
+                    f"Xatolik: <code>{str(exc)[:200]}</code>\n\n"
+                    f"{P('idea')} Bot kanalda <b>admin</b> bo'lishi shart!"
+                    f"Kanal nomi to'g'riligini tekshiring.",
+                )
+        except Exception:
+            pass
         return False
 
 
 def build_subscribe_panel():
-    channel = get_setting("mandatory_channel", "").strip()
-    ch = channel.lstrip("@") if channel else ""
+    ch = _norm_channel(get_setting("mandatory_channel", "")).lstrip("@")
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
         types.InlineKeyboardButton(
@@ -303,6 +325,8 @@ ICO = {
     "crown": "5217822164362739968",
     "money": "5233326571099534068",
     "coin": "5409048419211682843",
+    "bell": "5458603043203327669",
+    "cross": "5210952531676504517",
 }
 
 
@@ -323,6 +347,9 @@ def build_admin_panel():
         ibtn("Gift ID", "set:giftid", "diamond", "success"),
         ibtn("Referal bonus", "set:ref", "coin", "success"),
         ibtn("Majburiy obuna kanal", "set:channel", "lock", "primary"),
+        ibtn("Kanalni o'chirish", "set:channel_del", "cross", "danger"),
+        ibtn("To'lov Kanali", "set:paychan", "megaphone", "primary"),
+        ibtn("Murojaat", "set:support", "bell", "primary"),
         ibtn("Reklama tarqatish", "set:adv", "megaphone", "primary"),
         ibtn("Statistika", "set:stats", "chart", "primary"),
         ibtn("Bot balansini to'ldirish", "set:botbal", "money", "success"),
@@ -596,8 +623,18 @@ def handle_admin_input(message):
             set_setting("ref_bonus", n)
             bot.send_message(uid, f"{P('check')} Referal bonusi: <b>+{n} {P('star')}</b>", reply_markup=build_admin_panel())
         elif step == "await_channel":
-            set_setting("mandatory_channel", value)
-            bot.send_message(uid, f"{P('check')} Majburiy obuna kanali: <code>{value}</code>", reply_markup=build_admin_panel())
+            if value in ("-", "0", "o'chirish", "delete"):
+                set_setting("mandatory_channel", "")
+                bot.send_message(uid, f"{P('cross')} Majburiy obuna <b>o'chirildi</b>.", reply_markup=build_admin_panel())
+            else:
+                set_setting("mandatory_channel", value)
+                bot.send_message(uid, f"{P('check')} Majburiy obuna kanali: <code>{value}</code>", reply_markup=build_admin_panel())
+        elif step == "await_paychan":
+            set_setting("payment_channel", value)
+            bot.send_message(uid, f"{P('check')} To'lov Kanali: <code>{value}</code>", reply_markup=build_admin_panel())
+        elif step == "await_support":
+            set_setting("support_username", value)
+            bot.send_message(uid, f"{P('check')} Murojaat: <code>{value}</code>", reply_markup=build_admin_panel())
         elif step == "await_adv":
             conn = db()
             rows = conn.execute("SELECT user_id FROM users").fetchall()
@@ -690,7 +727,29 @@ def on_admin_callback(call):
         set_step(uid, "await_channel")
         bot.edit_message_text(
             f"{P('lock')} Majburiy obuna <b>kanal username</b> yuboring (masalan @kanal_nomi):\n\n"
-            f"Bo'sh yuborsangiz obuna o'chiriladi.",
+            f"Joriy: {get_setting('mandatory_channel', '') or 'yoqilmagan'}",
+            uid, mid,
+        )
+    elif action == "channel_del":
+        set_setting("mandatory_channel", "")
+        set_step(uid, "admin")
+        bot.edit_message_text(
+            f"{P('cross')} Majburiy obuna <b>o'chirildi</b>.",
+            uid, mid,
+        )
+        bot.send_message(uid, f"{P('crown')} Admin panel", reply_markup=build_admin_panel())
+    elif action == "paychan":
+        set_step(uid, "await_paychan")
+        bot.edit_message_text(
+            f"{P('megaphone')} Yangi <b>To'lov Kanali</b> yuboring (masalan @kanal_nomi):\n\n"
+            f"Joriy: {get_setting('payment_channel', '@sizning_kanal')}",
+            uid, mid,
+        )
+    elif action == "support":
+        set_step(uid, "await_support")
+        bot.edit_message_text(
+            f"{P('bell')} Yangi <b>Murojaat</b> username yuboring (masalan @support_nomi):\n\n"
+            f"Joriy: {get_setting('support_username', '@sizning_support')}",
             uid, mid,
         )
     elif action == "adv":
@@ -717,7 +776,9 @@ def on_admin_callback(call):
             f"{P('shopping')} Gift: {get_setting('gift_amount')} {P('star')}\n"
             f"{P('coin')} Referal bonus: +{get_setting('ref_bonus')} {P('star')}\n"
             f"{P('diamond')} Gift ID: <code>{get_setting('gift_id')}</code>\n"
-            f"{P('lock')} Obuna kanali: <code>{channel}</code>",
+            f"{P('lock')} Obuna kanali: <code>{channel}</code>\n"
+            f"{P('megaphone')} To'lov kanali: {get_setting('payment_channel', '@sizning_kanal')}\n"
+            f"{P('bell')} Murojaat: {get_setting('support_username', '@sizning_support')}",
             reply_markup=build_admin_panel(),
         )
     elif action == "botbal":
