@@ -881,11 +881,28 @@ def start_keepalive():
         print(f"HTTP keepalive ochilmadi: {e}")
 
 
+def _render_self_ping():
+    url = os.environ.get("RENDER_EXTERNAL_URL", "").rstrip("/") or "http://127.0.0.1:8080"
+    while True:
+        time.sleep(300)
+        try:
+            import urllib.request
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                code = resp.status
+                print(f"self-ping OK ({code}) from {url}")
+        except Exception as e:
+            print(f"self-ping FAIL: {e}")
+
+
 def main():
     global BOT_USERNAME
     init_db()
     if os.environ.get("PORT"):
         start_keepalive()
+    if os.environ.get("RENDER_EXTERNAL_URL"):
+        threading.Thread(target=_render_self_ping, daemon=True).start()
+        print("self-ping ishga tushdi (300 soniya)")
     try:
         me = bot.get_me()
         BOT_USERNAME = me.username
