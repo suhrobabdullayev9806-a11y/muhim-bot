@@ -92,6 +92,7 @@ def init_db():
         "support_username": "@sizning_support",
         "admin_id": "",
         "mandatory_channel": "",
+        "botbal_amount": "50",
     }
     for k, v in defaults.items():
         cur.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
@@ -352,6 +353,7 @@ def build_admin_panel():
         ibtn("Murojaat", "set:support", "bell", "primary"),
         ibtn("Reklama tarqatish", "set:adv", "megaphone", "primary"),
         ibtn("Statistika", "set:stats", "chart", "primary"),
+        ibtn("Bot Stars miqdori", "set:botbal_amount", "star", "success"),
         ibtn("Bot balansini to'ldirish", "set:botbal", "money", "success"),
         ibtn("Chiqish", "set:exit", "lock", "danger"),
     )
@@ -635,6 +637,12 @@ def handle_admin_input(message):
         elif step == "await_support":
             set_setting("support_username", value)
             bot.send_message(uid, f"{P('check')} Murojaat: <code>{value}</code>", reply_markup=build_admin_panel())
+        elif step == "await_botbal_amount":
+            n = int(value)
+            if n <= 0:
+                raise ValueError
+            set_setting("botbal_amount", n)
+            bot.send_message(uid, f"{P('check')} Bot Stars miqdori: <b>{n} Stars</b>", reply_markup=build_admin_panel())
         elif step == "await_adv":
             conn = db()
             rows = conn.execute("SELECT user_id FROM users").fetchall()
@@ -781,17 +789,25 @@ def on_admin_callback(call):
             f"{P('bell')} Murojaat: {get_setting('support_username', '@sizning_support')}",
             reply_markup=build_admin_panel(),
         )
+    elif action == "botbal_amount":
+        set_step(uid, "await_botbal_amount")
+        bot.edit_message_text(
+            f"{P('star')} Bot balansini to'ldirish miqdorini (stars) yuboring.\n\n"
+            f"Joriy: <b>{get_setting('botbal_amount', '50')}</b> Stars",
+            uid, mid,
+        )
     elif action == "botbal":
-        bot.answer_callback_query(call.id, "Invoice yuborilmoqda...")
+        amount = int(get_setting("botbal_amount", "50"))
+        bot.answer_callback_query(call.id, f"{amount} Stars invoice yuborilmoqda...")
         try:
             bot.send_invoice(
                 chat_id=uid,
                 title="Bot balansini to'ldirish",
-                description="Stars bot balansiga qo'shiladi (gift yuborish uchun)",
+                description=f"{amount} Stars bot balansiga qo'shiladi (gift yuborish uchun)",
                 invoice_payload=f"botbal:{uid}",
                 provider_token="",
                 currency="XTR",
-                prices=[types.LabeledPrice(label="Bot Stars", amount=50)],
+                prices=[types.LabeledPrice(label="Bot Stars", amount=amount)],
             )
         except Exception as exc:
             bot.send_message(uid, f"{P('cross')} Chek ochilmadi: {exc}")
