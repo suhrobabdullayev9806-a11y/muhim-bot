@@ -715,115 +715,135 @@ def on_admin_callback(call):
         return
     action = call.data.split(":")[1]
     mid = call.message.message_id
-    bot.answer_callback_query(call.id)
-    if action == "req":
-        set_step(uid, "await_req")
-        bot.edit_message_text(
-            f"{P('gear')} Yangi <b>req_stars</b> (yechish sharti) sonini yuboring\u2026",
-            uid, mid,
-        )
-    elif action == "gift":
-        set_step(uid, "await_gift")
-        bot.edit_message_text(
-            f"{P('shopping')} Yangi <b>gift_amount</b> sonini yuboring\u2026",
-            uid, mid,
-        )
-    elif action == "giftid":
-        set_step(uid, "await_giftid")
-        bot.edit_message_text(
-            f"{P('diamond')} Yangi <b>Gift ID</b> yuboring\u2026",
-            uid, mid,
-        )
-    elif action == "ref":
-        set_step(uid, "await_ref")
-        bot.edit_message_text(
-            f"{P('coin')} Yangi <b>referal bonusi</b> (star soni) yuboring\u2026",
-            uid, mid,
-        )
-    elif action == "channel":
-        set_step(uid, "await_channel")
-        bot.edit_message_text(
-            f"{P('lock')} Majburiy obuna <b>kanal username</b> yuboring (masalan @kanal_nomi):\n\n"
-            f"Joriy: {get_setting('mandatory_channel', '') or 'yoqilmagan'}",
-            uid, mid,
-        )
-    elif action == "channel_del":
-        set_setting("mandatory_channel", "")
-        set_step(uid, "admin")
-        bot.edit_message_text(
-            f"{P('cross')} Majburiy obuna <b>o'chirildi</b>.",
-            uid, mid,
-        )
-        bot.send_message(uid, f"{P('crown')} Admin panel", reply_markup=build_admin_panel())
-    elif action == "paychan":
-        set_step(uid, "await_paychan")
-        bot.edit_message_text(
-            f"{P('megaphone')} Yangi <b>To'lov Kanali</b> yuboring (masalan @kanal_nomi):\n\n"
-            f"Joriy: {get_setting('payment_channel', '@sizning_kanal')}",
-            uid, mid,
-        )
-    elif action == "support":
-        set_step(uid, "await_support")
-        bot.edit_message_text(
-            f"{P('bell')} Yangi <b>Murojaat</b> username yuboring (masalan @support_nomi):\n\n"
-            f"Joriy: {get_setting('support_username', '@sizning_support')}",
-            uid, mid,
-        )
-    elif action == "adv":
-        set_step(uid, "await_adv")
-        bot.edit_message_text(
-            f"{P('megaphone')} Barcha foydalanuvchilarga yuboriladigan reklama matnini yozing\u2026",
-            uid, mid,
-        )
-    elif action == "stats":
-        conn = db()
-        users = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-        total_bal = conn.execute("SELECT COALESCE(SUM(balance),0) s FROM users").fetchone()["s"]
-        ref_count = conn.execute("SELECT COUNT(*) c FROM users WHERE referred_by IS NOT NULL").fetchone()["c"]
-        conn.close()
-        channel = get_setting("mandatory_channel", "").strip() or "yo'q"
-        bot.answer_callback_query(call.id)
-        bot.send_message(
-            uid,
-            f"{P('chart')} <b>Statistika</b>\n\n"
-            f"{P('coin')} Foydalanuvchilar: {users}\n"
-            f"{P('link')} Ref. orqali kirganlar: {ref_count}\n"
-            f"{P('money')} Umumiy balans: {total_bal} {P('star')}\n\n"
-            f"{P('gear')} Yechish sharti: {get_setting('req_stars')} {P('star')}\n"
-            f"{P('shopping')} Gift: {get_setting('gift_amount')} {P('star')}\n"
-            f"{P('coin')} Referal bonus: +{get_setting('ref_bonus')} {P('star')}\n"
-            f"{P('diamond')} Gift ID: <code>{get_setting('gift_id')}</code>\n"
-            f"{P('lock')} Obuna kanali: <code>{channel}</code>\n"
-            f"{P('megaphone')} To'lov kanali: {get_setting('payment_channel', '@sizning_kanal')}\n"
-            f"{P('bell')} Murojaat: {get_setting('support_username', '@sizning_support')}",
-            reply_markup=build_admin_panel(),
-        )
-    elif action == "botbal_amount":
-        set_step(uid, "await_botbal_amount")
-        bot.edit_message_text(
-            f"{P('star')} Bot balansini to'ldirish miqdorini (stars) yuboring.\n\n"
-            f"Joriy: <b>{get_setting('botbal_amount', '50')}</b> Stars",
-            uid, mid,
-        )
-    elif action == "botbal":
-        amount = int(get_setting("botbal_amount", "50"))
-        bot.answer_callback_query(call.id, f"{amount} Stars invoice yuborilmoqda...")
-        try:
-            bot.send_invoice(
-                chat_id=uid,
-                title="Bot balansini to'ldirish",
-                description=f"{amount} Stars bot balansiga qo'shiladi (gift yuborish uchun)",
-                invoice_payload=f"botbal:{uid}",
-                provider_token="",
-                currency="XTR",
-                prices=[types.LabeledPrice(label="Bot Stars", amount=amount)],
+    try:
+        if action == "req":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_req")
+            bot.edit_message_text(
+                f"{P('gear')} Yangi <b>req_stars</b> (yechish sharti) sonini yuboring\u2026",
+                uid, mid,
             )
-        except Exception as exc:
-            bot.send_message(uid, f"{P('cross')} Chek ochilmadi: {exc}")
-    elif action == "exit":
-        set_step(uid, "home")
-        bot.edit_message_text(f"{P('lock')} Admin paneldan chiqdingiz.", uid, mid)
-        bot.send_message(uid, "Asosiy menyu:", reply_markup=menu_default())
+        elif action == "gift":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_gift")
+            bot.edit_message_text(
+                f"{P('shopping')} Yangi <b>gift_amount</b> sonini yuboring\u2026",
+                uid, mid,
+            )
+        elif action == "giftid":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_giftid")
+            bot.edit_message_text(
+                f"{P('diamond')} Yangi <b>Gift ID</b> yuboring\u2026",
+                uid, mid,
+            )
+        elif action == "ref":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_ref")
+            bot.edit_message_text(
+                f"{P('coin')} Yangi <b>referal bonusi</b> (star soni) yuboring\u2026",
+                uid, mid,
+            )
+        elif action == "channel":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_channel")
+            bot.edit_message_text(
+                f"{P('lock')} Majburiy obuna <b>kanal username</b> yuboring (masalan @kanal_nomi):\n\n"
+                f"Joriy: {get_setting('mandatory_channel', '') or 'yoqilmagan'}",
+                uid, mid,
+            )
+        elif action == "channel_del":
+            set_setting("mandatory_channel", "")
+            set_step(uid, "admin")
+            bot.answer_callback_query(call.id, "Kanal o'chirildi!")
+            bot.edit_message_text(
+                f"{P('cross')} Majburiy obuna <b>o'chirildi</b>.",
+                uid, mid,
+            )
+            bot.send_message(uid, f"{P('crown')} Admin panel", reply_markup=build_admin_panel())
+        elif action == "paychan":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_paychan")
+            bot.edit_message_text(
+                f"{P('megaphone')} Yangi <b>To'lov Kanali</b> yuboring (masalan @kanal_nomi):\n\n"
+                f"Joriy: {get_setting('payment_channel', '@sizning_kanal')}",
+                uid, mid,
+            )
+        elif action == "support":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_support")
+            bot.edit_message_text(
+                f"{P('bell')} Yangi <b>Murojaat</b> username yuboring (masalan @support_nomi):\n\n"
+                f"Joriy: {get_setting('support_username', '@sizning_support')}",
+                uid, mid,
+            )
+        elif action == "adv":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_adv")
+            bot.edit_message_text(
+                f"{P('megaphone')} Barcha foydalanuvchilarga yuboriladigan reklama matnini yozing\u2026",
+                uid, mid,
+            )
+        elif action == "stats":
+            bot.answer_callback_query(call.id)
+            conn = db()
+            users = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+            total_bal = conn.execute("SELECT COALESCE(SUM(balance),0) s FROM users").fetchone()["s"]
+            ref_count = conn.execute("SELECT COUNT(*) c FROM users WHERE referred_by IS NOT NULL").fetchone()["c"]
+            conn.close()
+            channel = get_setting("mandatory_channel", "").strip() or "yo'q"
+            bot.send_message(
+                uid,
+                f"{P('chart')} <b>Statistika</b>\n\n"
+                f"{P('coin')} Foydalanuvchilar: {users}\n"
+                f"{P('link')} Ref. orqali kirganlar: {ref_count}\n"
+                f"{P('money')} Umumiy balans: {total_bal} {P('star')}\n\n"
+                f"{P('gear')} Yechish sharti: {get_setting('req_stars')} {P('star')}\n"
+                f"{P('shopping')} Gift: {get_setting('gift_amount')} {P('star')}\n"
+                f"{P('coin')} Referal bonus: +{get_setting('ref_bonus')} {P('star')}\n"
+                f"{P('diamond')} Gift ID: <code>{get_setting('gift_id')}</code>\n"
+                f"{P('lock')} Obuna kanali: <code>{channel}</code>\n"
+                f"{P('megaphone')} To'lov kanali: {get_setting('payment_channel', '@sizning_kanal')}\n"
+                f"{P('bell')} Murojaat: {get_setting('support_username', '@sizning_support')}",
+                reply_markup=build_admin_panel(),
+            )
+        elif action == "botbal_amount":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "await_botbal_amount")
+            bot.edit_message_text(
+                f"{P('star')} Bot balansini to'ldirish miqdorini (stars) yuboring.\n\n"
+                f"Joriy: <b>{get_setting('botbal_amount', '50')}</b> Stars",
+                uid, mid,
+            )
+        elif action == "botbal":
+            try:
+                amount = int(get_setting("botbal_amount", "50"))
+            except (ValueError, TypeError):
+                amount = 50
+            bot.answer_callback_query(call.id, f"{amount} Stars invoice yuborilmoqda...")
+            try:
+                bot.send_invoice(
+                    chat_id=uid,
+                    title="Bot balansini to'ldirish",
+                    description=f"{amount} Stars bot balansiga qo'shiladi (gift yuborish uchun)",
+                    invoice_payload=f"botbal:{uid}",
+                    provider_token="",
+                    currency="XTR",
+                    prices=[types.LabeledPrice(label="Bot Stars", amount=amount)],
+                )
+            except Exception as exc:
+                bot.send_message(uid, f"{P('cross')} Chek ochilmadi: {exc}")
+        elif action == "exit":
+            bot.answer_callback_query(call.id)
+            set_step(uid, "home")
+            bot.edit_message_text(f"{P('lock')} Admin paneldan chiqdingiz.", uid, mid)
+            bot.send_message(uid, "Asosiy menyu:", reply_markup=menu_default())
+    except Exception as exc:
+        print(f"[ADMIN_CALLBACK] xatolik uid={uid} action={action}: {exc}")
+        try:
+            bot.answer_callback_query(call.id, f"Xatolik: {str(exc)[:100]}")
+        except Exception:
+            pass
 
 
 @bot.pre_checkout_query_handler(func=lambda q: True)
