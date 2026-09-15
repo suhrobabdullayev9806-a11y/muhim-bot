@@ -134,6 +134,16 @@ def get_balance(user_id):
     return row["balance"] if row else 0
 
 
+def get_user_id_by_username(username):
+    conn = db()
+    row = conn.execute(
+        "SELECT user_id FROM users WHERE username=? COLLATE NOCASE ORDER BY user_id LIMIT 1",
+        (username,),
+    ).fetchone()
+    conn.close()
+    return row["user_id"] if row else None
+
+
 def set_balance(user_id, amount):
     conn = db()
     conn.execute("UPDATE users SET balance=? WHERE user_id=?", (amount, user_id))
@@ -452,10 +462,8 @@ def handle_withdraw_username(message):
     if not gift_id:
         bot.send_message(uid, f"{P('cross')} Gift hozircha sozlanmagan.", reply_markup=menu_default())
         return
-    try:
-        target = bot.get_chat("@" + username)
-        target_id = target.id
-    except telebot.apihelper.ApiException:
+    target_id = get_user_id_by_username(username)
+    if not target_id:
         bot.send_message(
             uid,
             f"{P('warn')} @{username} topilmadi yoki bot bilan suhbatni boshlamagan.\n"
