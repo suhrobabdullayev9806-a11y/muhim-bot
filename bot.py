@@ -715,6 +715,7 @@ def on_admin_callback(call):
         return
     action = call.data.split(":")[1]
     mid = call.message.message_id
+    bot.answer_callback_query(call.id)
     if action == "req":
         set_step(uid, "await_req")
         bot.edit_message_text(

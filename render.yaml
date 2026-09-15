@@ -3,7 +3,7 @@ services:
     name: muhim-bot
     runtime: python
     plan: free
-    buildCommand: pip install pyTelegramBotAPI
+    buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     healthCheckPath: /
     envVars:
